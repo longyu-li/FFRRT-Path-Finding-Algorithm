@@ -184,8 +184,12 @@ class RRTStarPlanner:
         return close_states
     
     def cost(self, state:State):
-        parents = self._follow_parent_pointers(state)
-        return len(parents)
+        cost = 0
+        currptr = state
+        while currptr.parent is not None:
+            cost += currptr.euclidean_distance(currptr.parent)
+            currptr = currptr.parent
+        return cost
 
 
     def sample_from_2d_unit_ball(self):
@@ -256,35 +260,36 @@ class RRTStarPlanner:
                 tree_nodes.add(x_new)
 
                 X_near = self.near(tree_nodes, x_new, max_steering_radius)
+                c_min = self.cost(x_nearest) + x_nearest.euclidean_distance(x_new)
                 x_min = x_nearest
-                c_min = self.cost(x_new)
                 for x_near in X_near:
+                    if x_new ==x_near:
+                        continue
                     c_new = self.cost(x_near) + x_near.euclidean_distance(x_new)
                     if c_new < c_min:
                         if(self.path_is_obstacle_free(x_near, x_new)):
-                            x_min = x_near 
+                            x_min = x_near
                             c_min = c_new 
 
+                x_new.parent = x_min
                 x_min.children.append(x_new)
-                x_new.parent = x_min 
+
                 for x_near in X_near:
-                    c_near = len(self._follow_parent_pointers(x_near))
-                    c_new = len(self._follow_parent_pointers(x_new)) + x_new.euclidean_distance(x_near)
+                    c_near = self.cost(x_near)
+                    c_new = self.cost(x_new) + x_new.euclidean_distance(x_near)
                     if c_new < c_near:
                         if self.path_is_obstacle_free(x_near, x_new):
-
-                            x_parent = x_near.parent
-                            x_parent.children.remove(x_near)
+                            x_near.parent.children.remove(x_near)
                             x_new.children.append(x_near)
                             x_near.parent = x_new
                 
                 plot_points[len(tree_nodes)] = plot_points[len(tree_nodes) - 1]
 
                 if x_new.euclidean_distance(dest_state) < dest_reached_radius:
-                    X_soln[x_new] = self.cost(x_new) * max_steering_radius
-                    if self.cost(x_new) * max_steering_radius < plot_points[len(tree_nodes)]:
-                        dest_state.parent = x_new
-                        plot_points[len(tree_nodes)] = self.cost(dest_state) * max_steering_radius
+                    X_soln[x_new] = self.cost(x_new) 
+                    if self.cost(x_new) < plot_points[len(tree_nodes)]:
+
+                        plot_points[len(tree_nodes)] = self.cost(x_new) 
                 # plot the new node and edge
         for node in tree_nodes:
             cv2.circle(img, (node.x, node.y), 2, (0,0,0))
@@ -332,7 +337,7 @@ if __name__ == "__main__":
     rrt = RRTStarPlanner(world)
 
     start_state = State(10, 10, None)
-    dest_state = State(500, 250, None)
+    dest_state = State(10, 250, None)
 
     max_num_steps = 2000     # max number of nodes to be added to the tree
     max_steering_radius = 30 # pixels
