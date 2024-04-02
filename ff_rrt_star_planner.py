@@ -174,6 +174,18 @@ class FFRRTPlanner:
 
                 s_new.x = int(s_nearest.x + round(cos(angle) * max_radius))
                 s_new.y = int(s_nearest.y + round(sin(angle) * max_radius))
+            
+        # Ensure not out of bounds:
+        rows, cols = self.world.shape[0], self.world.shape[1]
+        if s_new.x < 0:
+            s_new.x = 0
+        elif s_new.x >= cols:
+            s_new.x = cols - 1
+        
+        if s_new.y < 0:
+            s_new.y = 0
+        elif s_new.y >= rows:
+            s_new.y = rows - 1
 
         return s_new
 
@@ -446,24 +458,51 @@ if __name__ == "__main__":
         print("Usage: rrt_planner.py occupancy_grid.pkl")
         sys.exit(1)
 
+    max_num_steps = 100000     # max number of nodes to be added to the tree
+    max_steering_radius = 50 # pixels
+    dest_reached_radius = 50 # pixels
+
+
     # pkl_file = open(sys.argv[1], 'rb')
     # pkl_file = open('./worlds/map.pkl', 'rb')
-    # world is a numpy array with dimensions (rows, cols, 3 color channels)
+    # # world is a numpy array with dimensions (rows, cols, 3 color channels)
     # world = pickle.load(pkl_file)
     # pkl_file.close()
-
+    
     world = cv2.imread('./worlds/simple_maze.png')
     start_state = State(40, 40, None)
     dest_state = State(1000, 650, None)
-
+    rrt = FFRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
+    
     world = cv2.imread('./worlds/complex_maze.png')
     start_state = State(40, 40, None)
     dest_state = State(1000, 650, None)
-
+    rrt = FFRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
+    
     world = cv2.imread('./worlds/complex_maze_concave.png')
     start_state = State(170, 120, None)
     dest_state = State(1000, 650, None)
-
+    rrt = FFRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
+    
+    world = cv2.imread('./worlds/cluttered.png')
+    start_state = State(40, 40, None)
+    dest_state = State(1000, 650, None)
+        
     # world = cv2.imread('./worlds/cluttered.png')
     # start_state = State(40, 40, None)
     # dest_state = State(1000, 650, None)
@@ -474,15 +513,84 @@ if __name__ == "__main__":
     # dest_state = State(575, 70, None)
 
     rrt = FFRRTPlanner(world, start_state, dest_state)
-
-    max_num_steps = 100000     # max number of nodes to be added to the tree
-    max_steering_radius = 50 # pixels
-    dest_reached_radius = 50 # pixels
     plan = rrt.plan(start_state,
                     dest_state,
                     max_num_steps,
                     max_steering_radius,
                     dest_reached_radius)
+    
+    # world = cv2.imread('./worlds/floor_plan.png')
+    # start_state = State(70, 860, None)
+    # dest_state = State(1260, 100, None)
+
+    # rrt = FFRRTPlanner(world, start_state, dest_state)
+
+    # plan = rrt.plan(start_state,
+    #                 dest_state,
+    #                 max_num_steps,
+    #                 max_steering_radius,
+    #                 dest_reached_radius)
+    
+    # dest_state = State(1250, 850, None)
+
+    # rrt = FFRRTPlanner(world, start_state, dest_state)
+
+    # plan = rrt.plan(start_state,
+    #                 dest_state,
+    #                 max_num_steps,
+    #                 max_steering_radius,
+    #                 dest_reached_radius)
+
+
+    world = cv2.imread('./worlds/floor_plan_cleaned.png')
+    start_state = State(80, 820, None)
+    dest_state = State(1210, 90, None)
+    rrt = FFRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
+    
+    dest_state = State(1210, 820, None)
+    rrt = FFRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
+
+    world = cv2.imread('./worlds/regular.png')
+    start_state = State(30, 25, None)
+    dest_state = State(925, 720, None)
+    rrt = FFRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
+
+    world = cv2.imread('./worlds/irregular.png')
+    start_state = State(40, 35, None)
+    dest_state = State(800, 645, None)
+    rrt = FFRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
+
+    world = cv2.imread('./worlds/narrow.png')
+    start_state = State(35, 35, None)
+    dest_state = State(1125, 900, None)
+    rrt = FFRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
+
+    
 
 
 
