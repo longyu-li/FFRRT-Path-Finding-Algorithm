@@ -49,7 +49,7 @@ class State:
         assert (state)
         return sqrt((state.x - self.x)**2 + (state.y - self.y)**2)
 
-class FastRRTPlanner:
+class FFRRTPlanner:
     """
     Applies the RRT algorithm on a given grid world
     """
@@ -94,7 +94,7 @@ class FastRRTPlanner:
             x = random.randint(0, cols - 1)
             y = random.randint(0, rows - 1)
             state = State(x, y, None)
-        
+
         return state
 
     def _follow_parent_pointers(self, state):
@@ -187,7 +187,7 @@ class FastRRTPlanner:
 
         if not (self.state_is_free(s_to)):
             return False
-        
+
         # We can either use max_checks:
 
         # max_checks = 100
@@ -222,7 +222,7 @@ class FastRRTPlanner:
 
     ################################################################
 
-    # These are the functions from the FF-RRT* paper. 
+    # These are the functions from the FF-RRT* paper.
     # The previous functions were from Assignment 2 (with minor adjustments)
 
     def improved_hybrid_sample(self, dest_state, prev_sample, hybrid_lambda):
@@ -234,7 +234,7 @@ class FastRRTPlanner:
             # Find a better sample than the previously sampled node
             while (abs(s_rand.x - dest_state.x) > abs(dest_state.x - prev_sample.x)) and \
                     (abs(s_rand.y - dest_state.y) > abs(dest_state.y - prev_sample.y)):
-                
+
                 s_rand = self.sample_state()
 
         return s_rand
@@ -255,7 +255,7 @@ class FastRRTPlanner:
         s_parent = self.backtracking(s_rand, s_parent)
 
         return s_parent
-    
+
     def backtracking(self, s_rand, s_parent):
 
         # Basically, find the furthest parent s_rand can directly connect to
@@ -282,7 +282,7 @@ class FastRRTPlanner:
                 closest_region.append(node)
 
         return closest_region
-    
+
     def improved_rewire(self, s_rand, closest_region):
         for s_near in closest_region:
             if self.path_is_obstacle_free(s_near, s_rand.parent):
@@ -361,7 +361,7 @@ class FastRRTPlanner:
             s_rand = self.improved_hybrid_sample(dest_state, prev_sample, hybrid_lambda)
             s_nearest = self.find_closest_state(tree_nodes, s_rand)
             s_new = self.steer_towards(s_nearest, s_rand, max_steering_radius)
-            
+
             if not self.state_is_free(s_new):
                 continue
 
@@ -451,7 +451,7 @@ if __name__ == "__main__":
     # world is a numpy array with dimensions (rows, cols, 3 color channels)
     # world = pickle.load(pkl_file)
     # pkl_file.close()
-    
+
     world = cv2.imread('./worlds/simple_maze.png')
     start_state = State(40, 40, None)
     dest_state = State(1000, 650, None)
@@ -459,7 +459,7 @@ if __name__ == "__main__":
     world = cv2.imread('./worlds/complex_maze.png')
     start_state = State(40, 40, None)
     dest_state = State(1000, 650, None)
-        
+
     world = cv2.imread('./worlds/complex_maze_concave.png')
     start_state = State(170, 120, None)
     dest_state = State(1000, 650, None)
@@ -473,7 +473,7 @@ if __name__ == "__main__":
     # dest_state = State(215, 500, None)
     # dest_state = State(575, 70, None)
 
-    rrt = FastRRTPlanner(world, start_state, dest_state)
+    rrt = FFRRTPlanner(world, start_state, dest_state)
 
     max_num_steps = 100000     # max number of nodes to be added to the tree
     max_steering_radius = 50 # pixels

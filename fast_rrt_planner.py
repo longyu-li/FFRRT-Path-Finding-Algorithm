@@ -82,14 +82,16 @@ class FastRRTPlanner:
         rows, cols = self.world.shape[0], self.world.shape[1]
         state = None
 
-        x = random.randint(0, cols - 1)
-        y = random.randint(0, rows - 1)
+        delta = 10
+
+        x = random.randint(0 + delta, cols - 1 - delta)
+        y = random.randint(0 + delta, rows - 1 - delta)
         state = State(x, y, None)
 
         # Ensures the state returned is free
         while (self.state_is_free(state) == False):
-            x = random.randint(0, cols - 1)
-            y = random.randint(0, rows - 1)
+            x = random.randint(0 + delta, cols - 1 - delta)
+            y = random.randint(0 + delta, rows - 1 - delta)
             state = State(x, y, None)
         
         return state
@@ -172,6 +174,18 @@ class FastRRTPlanner:
 
                 s_new.x = int(s_nearest.x + round(cos(angle) * max_radius))
                 s_new.y = int(s_nearest.y + round(sin(angle) * max_radius))
+        
+        # Ensure not out of bounds:
+        rows, cols = self.world.shape[0], self.world.shape[1]
+        if s_new.x < 0:
+            s_new.x = 0
+        elif s_new.x >= cols:
+            s_new.x = cols - 1
+        
+        if s_new.y < 0:
+            s_new.y = 0
+        elif s_new.y >= rows:
+            s_new.y = rows - 1
 
         return s_new
 
@@ -188,24 +202,9 @@ class FastRRTPlanner:
         
         # We can either use max_checks:
 
-        # max_checks = 100
-        # for i in range(max_checks):
-        #     ratio = float(i) / max_checks
-        #     ...
-
-        # ...or step distance, which I prefer
-
-        step_distance = 5
-        total_distance = s_from.euclidean_distance(s_to)
-        num_steps = int(total_distance / step_distance)
-
-        # s_from and s_to are basically next to each other
-        # we assume s_from and s_to are in a free space, so return True
-        if (num_steps == 0):
-            return True
-
-        for i in range(num_steps + 1):  # Include the last point (s_to)
-            ratio = float(i) / num_steps
+        max_checks = 100
+        for i in range(max_checks):
+            ratio = float(i) / max_checks
 
             x = int(s_from.x + ratio * (s_to.x - s_from.x))
             y = int(s_from.y + ratio * (s_to.y - s_from.y))
@@ -312,7 +311,7 @@ class FastRRTPlanner:
         path_length_list = []  # List to store the length of the path at each step
 
         # hybrid_lambda = random.random()
-        hybrid_lambda = 0.3
+        hybrid_lambda = 0.2
         prev_sample = start_state
 
         for step in range(max_num_steps):
@@ -394,12 +393,34 @@ if __name__ == "__main__":
     # dest_state = State(1000, 650, None)
         
     # world = cv2.imread('./worlds/complex_maze_concave.png')
-    # start_state = State(170, 120, None)
+    # start_state = State(160, 70, None)
     # dest_state = State(1000, 650, None)
 
-    world = cv2.imread('./worlds/cluttered.png')
-    start_state = State(40, 40, None)
-    dest_state = State(1000, 650, None)
+    # world = cv2.imread('./worlds/cluttered.png')
+    # start_state = State(40, 40, None)
+    # dest_state = State(1000, 650, None)
+
+    # world = cv2.imread('./worlds/floor_plan.png')
+    # start_state = State(70, 860, None)
+    # dest_state = State(1260, 100, None)
+    # dest_state = State(1250, 850, None)
+
+    # world = cv2.imread('./worlds/floor_plan_cleaned.png')
+    # start_state = State(80, 820, None)
+    # dest_state = State(1210, 90, None)
+    # dest_state = State(1210, 820, None)
+
+    # world = cv2.imread('./worlds/regular.png')
+    # start_state = State(30, 25, None)
+    # dest_state = State(925, 720, None)
+
+    # world = cv2.imread('./worlds/irregular.png')
+    # start_state = State(40, 35, None)
+    # dest_state = State(800, 645, None)
+
+    world = cv2.imread('./worlds/narrow.png')
+    start_state = State(35, 35, None)
+    dest_state = State(1125, 900, None)
 
     rrt = FastRRTPlanner(world, start_state, dest_state)
 
