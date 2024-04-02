@@ -49,7 +49,7 @@ class State:
         return sqrt((state.x - self.x) ** 2 + (state.y - self.y) ** 2)
 
 
-class FRrtStarPlanner:
+class FRRTPlanner:
     """
     Applies the RRT algorithm on a given grid world
     """
@@ -428,7 +428,7 @@ if __name__ == "__main__":
     # dest_state = State(1000, 650, None)
 
 
-    f_rrt_star = FRrtStarPlanner(world)
+    f_rrt_star = FRRTPlanner(world)
 
     start_state = State(40, 40, None)
     dest_state = State(1000, 650, None)
