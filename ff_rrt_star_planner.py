@@ -352,7 +352,8 @@ class FastRRTPlanner:
 
         plan = [start_state]
 
-        hybrid_lambda = random.random()
+        hybrid_lambda = 0.8
+        # hybrid_lambda = random.random()
         prev_sample = start_state
 
         for step in range(max_num_steps):
@@ -463,9 +464,9 @@ if __name__ == "__main__":
     start_state = State(170, 120, None)
     dest_state = State(1000, 650, None)
 
-    world = cv2.imread('./worlds/cluttered.png')
-    start_state = State(40, 40, None)
-    dest_state = State(1000, 650, None)
+    # world = cv2.imread('./worlds/cluttered.png')
+    # start_state = State(40, 40, None)
+    # dest_state = State(1000, 650, None)
 
     # start_state = State(10, 10, None)
     # dest_state = State(500, 500, None)
