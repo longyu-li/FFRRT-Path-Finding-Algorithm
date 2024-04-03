@@ -293,11 +293,11 @@ class InformedRRTPlanner:
                 x_ball = self.SampleUnitBall()
                 x_rand_temp = np.dot(np.dot(C, L), x_ball)
                 x_rand = State(int(x_rand_temp[(0, 0)] + x_center.x), int(x_rand_temp[(1, 0)] + x_center.y), None)
-                if self.state_is_free(x_rand):
+                if self.state_is_free(x_rand) and 0 <= x_rand.x < len(self.world[0]) and 0 <= x_rand.y < len(self.world):
                     break
         else:
             x_rand = self.SampleFreeSpace(hybrid_lambda_r)
-
+        
         return x_rand
     
     def InGoalRegion(self, node, dest_state, dest_reached_radius):
@@ -340,14 +340,15 @@ class InformedRRTPlanner:
         dist -= dest_reached_radius # needed or we get Math domain error when computing sqrt(c_max ** 2 - c_min ** 2)
 
         X_soln = set()
-
         for step in range(max_num_steps):
-            
+            num_nodes_list.append(num_nodes_list[step-1] + 1 if len(num_nodes_list) > 0 else 1)
             c_best = float('inf')
             for node in X_soln:
                 if node.cost < c_best:
                     c_best = node.cost
                     x_best = node
+
+            path_length_list.append(c_best)
 
             x_rand = self.Sample(c_best, dist, x_center, C, hybrid_lambda)
             x_nearest = self.find_closest_state(tree_nodes, x_rand)
@@ -388,19 +389,19 @@ class InformedRRTPlanner:
                 # plot the new node and edge
                 cv2.circle(img, (x_new.x, x_new.y), 2, (0,0,0))
                 cv2.line(img, (x_new.parent.x, x_new.parent.y), (x_new.x, x_new.y), (255,0,0))
-        
-            # Keep showing the image for a bit even
-            # if we don't add a new node and edge
+            
+                # Keep showing the image for a bit even
+                # if we don't add a new node and edge
             cv2.imshow('image', img)
-            cv2.waitKey(10)
+            cv2.waitKey(1)
 
         plan = self._follow_parent_pointers(x_best)
         dest_state.parent = x_best
         plan.append(dest_state)
 
         # draw_plan(img, plan, [], "rrt_result.png", bgr=(0,0,255), thickness=2)
-        draw_plan(img, plan, bgr=(0,0,255), thickness=2)
-        cv2.waitKey(0)
+        # draw_plan(img, plan, bgr=(0,0,255), thickness=2)
+        # cv2.waitKey(0)
 
         plt.plot(num_nodes_list, path_length_list, label='Optimal Path Length')
         plt.xlabel('Number of Nodes')
@@ -414,20 +415,22 @@ class InformedRRTPlanner:
     
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: rrt_planner.py occupancy_grid.pkl")
-        sys.exit(1)
+    # if len(sys.argv) < 2:
+    #     print("Usage: rrt_planner.py occupancy_grid.pkl")
+    #     sys.exit(1)
 
-    pkl_file = open(sys.argv[1], 'rb')
+
+    max_num_steps = 1000     # max number of nodes to be added to the tree
+    max_steering_radius = 50 # pixels
+    dest_reached_radius = 50 # pixels
+
+
+    # pkl_file = open(sys.argv[1], 'rb')
     # world is a numpy array with dimensions (rows, cols, 3 color channels)
-    world = pickle.load(pkl_file)
-    pkl_file.close()
-    start_state = State(35, 35, None)
-    dest_state = State(500, 500, None)
-        
-    # world = cv2.imread('./worlds/simple_maze.png')
-    # start_state = State(40, 40, None)
-    # dest_state = State(1000, 650, None)
+    # world = pickle.load(pkl_file)
+    # pkl_file.close()
+    # start_state = State(10, 10, None)
+    # dest_state = State(10, 250, None)
 
     # world = cv2.imread('./worlds/complex_maze.png')
     # start_state = State(40, 40, None)
@@ -441,16 +444,125 @@ if __name__ == "__main__":
     # start_state = State(40, 40, None)
     # dest_state = State(1000, 650, None)
 
-    rrt = InformedRRTPlanner(world, start_state, dest_state)
 
-    max_num_steps = 1000     # max number of nodes to be added to the tree
-    max_steering_radius = 50 # pixels
-    dest_reached_radius = 50 # pixels
+    # world = cv2.imread('./worlds/simple_maze.png')
+    # start_state = State(40, 40, None)
+    # dest_state = State(1000, 650, None)
+    # rrt = InformedRRTPlanner(world, start_state, dest_state)
+    # plan = rrt.plan(start_state,
+    #                 dest_state,
+    #                 max_num_steps,
+    #                 max_steering_radius,
+    #                 dest_reached_radius)
+    
+    # world = cv2.imread('./worlds/complex_maze.png')
+    # start_state = State(40, 40, None)
+    # dest_state = State(1000, 650, None)
+    # rrt = InformedRRTPlanner(world, start_state, dest_state)
+    # plan = rrt.plan(start_state,
+    #                 dest_state,
+    #                 max_num_steps,
+    #                 max_steering_radius,
+    #                 dest_reached_radius)
+    
+    # world = cv2.imread('./worlds/complex_maze_concave.png')
+    # start_state = State(170, 120, None)
+    # dest_state = State(1000, 650, None)
+    # rrt = InformedRRTPlanner(world, start_state, dest_state)
+    # plan = rrt.plan(start_state,
+    #                 dest_state,
+    #                 max_num_steps,
+    #                 max_steering_radius,
+    #                 dest_reached_radius)
+    
+    world = cv2.imread('./worlds/cluttered.png')
+    start_state = State(40, 40, None)
+    dest_state = State(500, 325, None)
+        
+    # world = cv2.imread('./worlds/cluttered.png')
+    # start_state = State(40, 40, None)
+    # dest_state = State(1000, 650, None)
+
+    # start_state = State(10, 10, None)
+    # dest_state = State(500, 500, None)
+    # dest_state = State(215, 500, None)
+    # dest_state = State(575, 70, None)
+
+    rrt = InformedRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
+    
+    # world = cv2.imread('./worlds/floor_plan.png')
+    # start_state = State(70, 860, None)
+    # dest_state = State(1260, 100, None)
+
+    # rrt = InformedRRTPlanner(world, start_state, dest_state)
+
+    # plan = rrt.plan(start_state,
+    #                 dest_state,
+    #                 max_num_steps,
+    #                 max_steering_radius,
+    #                 dest_reached_radius)
+    
+    # dest_state = State(1250, 850, None)
+
+    # rrt = InformedRRTPlanner(world, start_state, dest_state)
+
+    # plan = rrt.plan(start_state,
+    #                 dest_state,
+    #                 max_num_steps,
+    #                 max_steering_radius,
+    #                 dest_reached_radius)
+
+
+    # world = cv2.imread('./worlds/floor_plan_cleaned.png')
+    # start_state = State(80, 820, None)
+    # dest_state = State(1210, 90, None)
+    # rrt = InformedRRTPlanner(world, start_state, dest_state)
+    # plan = rrt.plan(start_state,
+    #                 dest_state,
+    #                 max_num_steps,
+    #                 max_steering_radius,
+    #                 dest_reached_radius)
+    
+    dest_state = State(1210, 820, None)
+    rrt = InformedRRTPlanner(world, start_state, dest_state)
     plan = rrt.plan(start_state,
                     dest_state,
                     max_num_steps,
                     max_steering_radius,
                     dest_reached_radius)
 
+    world = cv2.imread('./worlds/regular.png')
+    start_state = State(30, 25, None)
+    dest_state = State(925, 720, None)
+    rrt = InformedRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
 
+    world = cv2.imread('./worlds/irregular.png')
+    start_state = State(40, 35, None)
+    dest_state = State(800, 645, None)
+    rrt = InformedRRTPlanner(world, start_state, dest_state)
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
 
+    world = cv2.imread('./worlds/narrow.png')
+    start_state = State(35, 35, None)
+    dest_state = State(1125, 900, None)
+    rrt = InformedRRTPlanner(world, start_state, dest_state)
+    
+    plan = rrt.plan(start_state,
+                    dest_state,
+                    max_num_steps,
+                    max_steering_radius,
+                    dest_reached_radius)
