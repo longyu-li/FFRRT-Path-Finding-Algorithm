@@ -2,6 +2,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+import time
 
 from fast_rrt_planner import FastRRTPlanner
 from ff_rrt_star_planner import FFRRTPlanner
@@ -75,11 +76,40 @@ if __name__ == "__main__":
         # Assumes that the plan function returns the cost, and number of
         # iterations to find the optimal path
 
-        # informed_rrt_star.plan()
-        # fast_rrt_star.plan()
-        # f_rrt_star.plan()
-        # ff_rrt_star.plan()
-        pass
+        start_time = time.perf_counter()
+        irrt_path, irrt_cost, irrt_nodes = informed_rrt_star.plan()
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+        algos_t[0].append(execution_time)
+
+        start_time = time.perf_counter()
+        fast_path, fast_cost, fast_nodes = fast_rrt_star.plan()
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+        algos_t[1].append(execution_time)
+
+        start_time = time.perf_counter()
+        frrt_path, frrt_cost, frrt_nodes = f_rrt_star.plan()
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+        algos_t[2].append(execution_time)
+
+        start_time = time.perf_counter()
+        ffrrt_path, ffrrt_cost, ffrrt_nodes = ff_rrt_star.plan()
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+        algos_t[3].append(execution_time)
+
+        algos_c[0].append(irrt_cost)
+        algos_c[1].append(fast_cost)
+        algos_c[2].append(frrt_cost)
+        algos_c[3].append(ffrrt_cost)
+
+        algos_n[0].append(irrt_nodes)
+        algos_n[1].append(fast_nodes)
+        algos_n[2].append(frrt_nodes)
+        algos_n[3].append(ffrrt_nodes)
+        
 
     # Create the box plots displaying the performance indicators
     create_plot(algos_c, "C^{i}")
