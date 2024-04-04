@@ -345,6 +345,8 @@ class InformedRRTPlanner:
             c_best = float('inf')
             for node in X_soln:
                 if node.cost < c_best:
+                    print("num nodes", "path cost")
+                    print(num_nodes_list[step], node.cost)
                     c_best = node.cost
                     x_best = node
 
@@ -399,9 +401,9 @@ class InformedRRTPlanner:
         dest_state.parent = x_best
         plan.append(dest_state)
 
-        # draw_plan(img, plan, [], "rrt_result.png", bgr=(0,0,255), thickness=2)
-        # draw_plan(img, plan, bgr=(0,0,255), thickness=2)
-        # cv2.waitKey(0)
+        draw_plan(img, plan, [], "rrt_result.png", bgr=(0,0,255), thickness=2)
+        draw_plan(img, plan, bgr=(0,0,255), thickness=2)
+        cv2.waitKey(0)
 
         plt.plot(num_nodes_list, path_length_list, label='Optimal Path Length')
         plt.xlabel('Number of Nodes')
@@ -410,7 +412,7 @@ class InformedRRTPlanner:
         plt.legend()
         plt.savefig('rrt_opt_length_vs_num_nodes.png')
         plt.show()
-        
+        print(list(zip(num_nodes_list, path_length_list)))
         return [start_state]
     
 
