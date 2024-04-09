@@ -1,232 +1,78 @@
 #!/usr/bin/python
-import sys
-import time
-import pickle
-import numpy as np
-import random
-import cv2
+from common import *
 
-from itertools import product
-from math import cos, sin, pi, sqrt, log
-import matplotlib.pyplot as plt
-from plotting_utils import draw_plan
-from priority_queue import priority_dict
-
-class State:
+class InformedRRTPlanner(RRTPlanner):
     """
-    2D state.
+    Implementation of the Informed RRT* Planning algorithm.
     """
 
-    def __init__(self, x, y, parent):
-        """
-        x represents the columns on the image and y represents the rows,
-        Both are presumed to be integers
-        """
-        self.x = x
-        self.y = y
-        self.parent = parent
-        self.children = []
+    def RotationToWorldFrame(self, start_state, dest_state, L):
+        a1 = np.array([[(dest_state.x - start_state.x) / L],
+                       [(dest_state.y - start_state.y) / L], [0.0]])
+        e1 = np.array([[1.0], [0.0], [0.0]])
+        M = a1 @ e1.T
+        U, _, V_T = np.linalg.svd(M, True, True)
+        C = U @ np.diag([1.0, 1.0, np.linalg.det(U) * np.linalg.det(V_T.T)]) @ V_T
 
+        return C
 
-    def __eq__(self, state):
-        """
-        When are two states equal?
-        """
-        return state and self.x == state.x and self.y == state.y
+    def get_distance_and_angle(self, start_state, dest_state):
+        dx = dest_state.x - start_state.x
+        dy = dest_state.y - start_state.y
+        return start_state.euclidean_distance(dest_state), atan2(dy, dx)
+    
 
-    def __hash__(self):
-        """
-        The hash function for this object. This is necessary to have when we
-        want to use State objects as keys in dictionaries
-        """
-        return hash((self.x, self.y))
+    def init(self, start_state, dest_state):
+        cMin, theta = self.get_distance_and_angle(start_state, dest_state)
+        C = self.RotationToWorldFrame(start_state, dest_state, cMin)
+        xCenter = State(((start_state.x + dest_state.x) / 2), ((start_state.y + dest_state.y) / 2), None)
+        x_best = start_state
 
-    def euclidean_distance(self, state):
-        assert (state)
-        return sqrt((state.x - self.x)**2 + (state.y - self.y)**2)
+        return theta, cMin, xCenter, C, x_best
+    
+    def SampleUnitBall(self):
+        while True:
+            x, y = random.uniform(-1, 1), random.uniform(-1, 1)
+            if x ** 2 + y ** 2 < 1:
+                return np.array([[x], [y], [0.0]])
+    
+    def SampleFreeSpace(self, dest_state, hybrid_lambda):
+    
+        hybrid_lambda_r = random.random()
+        s_rand = None
 
-class RRTStarPlanner:
-    """
-    Applies the RRT algorithm on a given grid world
-    """
-
-    def __init__(self, world):
-        # (rows, cols, channels) array with values in {0,..., 255}
-        self.world = world
-
-        # (rows, cols) binary array. Cell is 1 iff it is occupied
-        self.occ_grid = self.world[:,:,0]
-        self.occ_grid = (self.occ_grid == 0).astype('uint8')
-
-    def state_is_free(self, state):
-        """
-        Does collision detection. Returns true iff the state and its nearby
-        surroundings are free.
-        """
-        return (self.occ_grid[state.y-5:state.y+5, state.x-5:state.x+5] == 0).all()
-
-
-    def sample_state(self):
-        """
-        Sample a new state uniformly randomly on the image.
-        """
-        #TODO: make sure you're not exceeding the row and columns bounds
-        # x must be in {0, cols-1} and y must be in {0, rows -1}
-        x = random.randint(0, len(self.world[0]) - 1)
-        y = random.randint(0, len(self.world) - 1)
-        return State(x, y, None)
-
-
-    def _follow_parent_pointers(self, state):
-        """
-        Returns the path [start_state, ..., destination_state] by following the
-        parent pointers.
-        """
-
-        curr_ptr = state
-        path = [state]
-
-        while curr_ptr is not None:
-            path.append(curr_ptr)
-            curr_ptr = curr_ptr.parent 
-
-        # return a reverse copy of the path (so that first state is starting state)
-        return path[::-1]
-
-
-    def find_closest_state(self, tree_nodes, state):
-        min_dist = float("Inf")
-        closest_state = None
-        for node in tree_nodes:
-            dist = node.euclidean_distance(state)
-            if dist < min_dist:
-                closest_state = node
-                min_dist = dist
-
-        return closest_state
-
-    def steer_towards(self, s_nearest:State, s_rand:State, max_radius):
-        """
-        Returns a new state s_new whose coordinates x and y
-        are decided as follows:
-
-        If s_rand is within a circle of max_radius from s_nearest
-        then s_new.x = s_rand.x and s_new.y = s_rand.y
-
-        Otherwise, s_rand is farther than max_radius from s_nearest.
-        In this case we place s_new on the line from s_nearest to
-        s_rand, at a distance of max_radius away from s_nearest.
-
-        """
-        x = 0
-        y = 0
-        # line from s_nearest to s_rand is these ^ coords
-        distance = s_nearest.euclidean_distance(s_rand)
-        if distance <= max_radius:
-            x = s_rand.x
-            y = s_rand.y
+        if (hybrid_lambda_r < hybrid_lambda):
+            s_rand = dest_state
         else:
-            #s_rand is x_1, s_nearest is x_0
-            if s_rand.x == s_nearest.x:
-                x = s_rand.x
-                if s_rand.y < s_nearest.y:
-                    y = s_nearest.y + max_radius
-                else:
-                    y = s_nearest.y -max_radius
-            else:
-                slope = (s_rand.y - s_nearest.y)/(s_rand.x - s_nearest.x)
-                if s_nearest.x < s_rand.x:
-                    x = s_nearest.x + max_radius/sqrt(1 + slope**2)
-                else:
-                    x = s_nearest.x - max_radius/sqrt(1 + slope**2)
-                y = slope * (x - s_nearest.x) + s_nearest.y
-            
-            
-        #TODO: populate x and y properly according to the description above.
-        #Note: x and y are integers and they should be in {0, ..., cols -1}
-        # and {0, ..., rows -1} respectively
+            s_rand = self.sample_state()
 
-        s_new = State(int(x), int(y), s_nearest)
-        return s_new
-
-
-    def path_is_obstacle_free(self, s_from:State, s_to:State):
-        """
-        Returns true iff the line path from s_from to s_to
-        is free
-        """
-        assert (self.state_is_free(s_from))
-
-        if not (self.state_is_free(s_to)):
-            return False
-        
-        max_checks = 10
-        distance = s_from.euclidean_distance(s_to)
-        for i in range(max_checks):
-            # TODO: check if the inteprolated state that is float(i)/max_checks * dist(s_from, s_new)
-            # away on the line from s_from to s_new is free or not. If not free return False
-            if not self.state_is_free(self.steer_towards(s_from, s_to, distance * (float(i)/ max_checks))):
-                return False
-
-        # Otherwise the line is free, so return true
-        return True
-
-
-    def near(self, tree_nodes, state, max_distance):
-        close_states = []
-        for node in tree_nodes:
-            if node == state:
-                continue
-            dist = node.euclidean_distance(state)
-            if dist < max_distance:
-                close_states.append(state)
-
-        return close_states
+        return s_rand
     
-    def cost(self, state:State):
-        cost = 0
-        currptr = state
-        while currptr.parent is not None:
-            cost += currptr.euclidean_distance(currptr.parent)
-            currptr = currptr.parent
-        return cost
-
-
-    def sample_from_2d_unit_ball(self):
-        length = np.sqrt(np.random.uniform(0, 1))
-        angle = np.pi * np.random.uniform(0, 2)
-        return np.array([[length * np.cos(angle)], [length * np.sin(angle)]])
-
-
-    def rotation_to_world_frame(self, start_state, goal_state, c_min):
-        a1 = np.array([[(goal_state.x - goal_state.y) / c_min],
-                       [goal_state.y - start_state.y]])
-        ones = np.array([[1, 0]])
-        M = a1 @ ones
-        U, Sigma, V_T = np.linalg.svd(M, True)
-        return U @ np.diag([1, np.linalg.det(U) * np.linalg.det(V_T.T)]) @ V_T
-    
-    def informed_sample(self, x_start:State, x_goal:State, c_max, C):
-        if c_max < float('inf'):
-            c_min = (x_goal.euclidean_distance(x_start))
-            x_centre = [(x_start.x + x_goal.x)/2, (x_start.y + x_goal.y)/2]
-            #for 3d change C and r to be 3 dimensional, maybe
-            r_n = sqrt(c_max**2 - c_min**2)/2
-            r = [c_max / 2, r_n]
+    def Sample(self, c_max, c_min, x_center, C, dest_state, hybrid_lambda_r):
+        if c_max < np.inf:
+            r = [c_max / 2.0,
+                 sqrt(c_max ** 2 - c_min ** 2) / 2.0,
+                 sqrt(c_max ** 2 - c_min ** 2) / 2.0]
             L = np.diag(r)
+
             while True:
-                x_ball = self.sample_from_2d_unit_ball()
-                _x_pre_rand = np.matmul(np.matmul(C, L), x_ball)
-                x_rand = State(_x_pre_rand[0,0] + x_centre[0], _x_pre_rand[1,0] + x_centre[1], None)
-                if(0 <= x_rand.x <= len(self.world[0]) - 1 and
-                   0 <= x_rand.y <= len(self.world) -1):
+                x_ball = self.SampleUnitBall()
+                x_rand_temp = np.dot(np.dot(C, L), x_ball)
+                x_rand = State(int(x_rand_temp[(0, 0)] + x_center.x), int(x_rand_temp[(1, 0)] + x_center.y), None)
+                if self.state_is_free(x_rand):
                     break
         else:
-            x_rand = self.sample_state()
+            x_rand = self.SampleFreeSpace(dest_state, hybrid_lambda_r)
         
         return x_rand
     
-    def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, dest_reached_radius):
+    def InGoalRegion(self, node, dest_state, dest_reached_radius):
+        if node.euclidean_distance(dest_state) < dest_reached_radius:
+            return True
+
+        return False
+
+    def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, dest_reached_radius, test, filename):
         """
         Returns a path as a sequence of states [start_state, ..., dest_state]
         if dest_state is reachable from start_state. Otherwise returns [start_state].
@@ -239,112 +85,188 @@ class RRTStarPlanner:
         tree_nodes = set()
         tree_nodes.add(start_state)
 
-        X_soln = {}
         # image to be used to display the tree
         img = np.copy(self.world)
 
         plan = [start_state]
-        plot_points = {1: float('inf')}
-        C = self.rotation_to_world_frame(start_state, dest_state, start_state.euclidean_distance(dest_state))
-        for step in range(max_num_steps):
-            c_best = float('inf')
-            for key in X_soln.keys():
-                if X_soln[key] < c_best:
-                    c_best = X_soln[key]
 
-            #x_rand = self.sample_state()
-            x_rand = self.informed_sample(start_state, dest_state, c_best, C)
+        # Variables used for plotting
+        num_nodes_list = []  # List to store the number of nodes at each step
+        path_length_list = []  # List to store the length of the path at each step
+
+        # hybrid_lambda = random.random()
+        hybrid_lambda = 0.3
+
+        theta, dist, x_center, C, x_best = self.init(start_state, dest_state)
+        c_best = np.inf
+
+        dist -= dest_reached_radius # needed or we get Math domain error when computing sqrt(c_max ** 2 - c_min ** 2)
+
+        # output format = [[curr_best_cost], [num_nodes], [time]]
+        output = [[], [], []]
+        start_time = time.perf_counter()
+
+        X_soln = set()
+        for step in range(max_num_steps):
+            num_nodes_list.append(num_nodes_list[step-1] + 1 if len(num_nodes_list) > 0 else 1)
+            c_best = float('inf')
+            for node in X_soln:
+                if node.cost < c_best:
+                    # print("num nodes", "path cost")
+                    # print(num_nodes_list[step], node.cost)
+                    c_best = node.cost
+                    x_best = node
+
+            path_length_list.append(c_best)
+
+            # Update output every 100 nodes
+            if (test == True) and \
+                (c_best != float('inf')) and \
+                (num_nodes_list[step] % 100 == 0 or output[0] == []): 
+
+                curr_time = time.perf_counter() - start_time
+                output[0].append(c_best + x_best.euclidean_distance(dest_state))
+                output[1].append(num_nodes_list[step])
+                output[2].append(curr_time)
+
+            
+            if (test == True) and (step % 1000 == 0):
+                print(step)
+
+            x_rand = self.Sample(c_best, dist, x_center, C, dest_state, hybrid_lambda)
             x_nearest = self.find_closest_state(tree_nodes, x_rand)
             x_new = self.steer_towards(x_nearest, x_rand, max_steering_radius)
+
             if self.path_is_obstacle_free(x_nearest, x_new):
+
+                near_nodes = self.near(x_new, tree_nodes, max_steering_radius)
+                c_min = x_nearest.cost + x_nearest.euclidean_distance(x_new)
+
+                x_new.parent = x_nearest
+                x_new.cost = c_min
+
+                # choose parent
+                for x_near in near_nodes:
+                    if (self.path_is_obstacle_free(x_near, x_new)):
+                        c_new = x_near.cost + x_near.euclidean_distance(x_new)
+                        if c_new < c_min:
+                            x_new.parent = x_near
+                            x_new.cost = c_new
+                            c_min = c_new
+                
+                # rewire
+                for x_near in near_nodes:
+                    if (self.path_is_obstacle_free(x_near, x_new)):
+                        c_near = x_near.cost
+                        c_new = x_new.cost + x_near.euclidean_distance(x_new)
+                        if c_new < c_near:
+                            x_near.parent = x_new
+                            x_near.cost = c_new
+
                 tree_nodes.add(x_new)
 
-                X_near = self.near(tree_nodes, x_new, max_steering_radius)
-                c_min = self.cost(x_nearest) + x_nearest.euclidean_distance(x_new)
-                x_min = x_nearest
-                for x_near in X_near:
-                    if x_new ==x_near:
-                        continue
-                    c_new = self.cost(x_near) + x_near.euclidean_distance(x_new)
-                    if c_new < c_min:
-                        if(self.path_is_obstacle_free(x_near, x_new)):
-                            x_min = x_near
-                            c_min = c_new 
+                if self.InGoalRegion(x_new, dest_state, dest_reached_radius):
+                    if self.path_is_obstacle_free(x_new, dest_state):
+                        X_soln.add(x_new)
 
-                x_new.parent = x_min
-                x_min.children.append(x_new)
-
-                for x_near in X_near:
-                    c_near = self.cost(x_near)
-                    c_new = self.cost(x_new) + x_new.euclidean_distance(x_near)
-                    if c_new < c_near:
-                        if self.path_is_obstacle_free(x_near, x_new):
-                            x_near.parent.children.remove(x_near)
-                            x_new.children.append(x_near)
-                            x_near.parent = x_new
-                
-                plot_points[len(tree_nodes)] = plot_points[len(tree_nodes) - 1]
-
-                if x_new.euclidean_distance(dest_state) < dest_reached_radius:
-                    X_soln[x_new] = self.cost(x_new) 
-                    if self.cost(x_new) < plot_points[len(tree_nodes)]:
-
-                        plot_points[len(tree_nodes)] = self.cost(x_new) 
                 # plot the new node and edge
-        for node in tree_nodes:
-            cv2.circle(img, (node.x, node.y), 2, (0,0,0))
-            for child in node.children:
-                cv2.line(img, (child.x, child.y), (node.x, node.y), (255,0,0))
+                cv2.circle(img, (x_new.x, x_new.y), 2, (0,0,0))
+                cv2.line(img, (x_new.parent.x, x_new.parent.y), (x_new.x, x_new.y), (255,0,0))
+            
+            # Keep showing the image for a bit even
+            # if we don't add a new node and edge
+            if (test == False):
+                cv2.imshow('image', img)
+                cv2.waitKey(10)
 
-
-        # Keep showing the image for a bit even
-        # if we don't add a new node and edge
-        cv2.imshow('image', img)
-        cv2.waitKey(10)
-        x = []
-        y = []
-        for pair in list(plot_points.items()):
-            if(pair[1] != -1):
-                x.append(pair[0])
-                y.append(pair[1])
+        if (x_best == start_state):
+            print("Informed-RRT: No path found!")
+            if (test == False):
+                return (None, -1, -1)
+            else:
+                return None, -1
         
+        plan = self._follow_parent_pointers(x_best)
+        dest_state.parent = x_best
+        plan.append(dest_state)
 
-        minx= float('infinity')
-        for key in X_soln.keys():
-            if X_soln[key] < minx:
-                plan = self._follow_parent_pointers(key)
-                minx = X_soln[key]
+        if (filename != None):
+            draw_plan_and_save(img, plan, [], filename, bgr=(0,0,255), thickness=2)
 
-        draw_plan(img, plan, bgr=(0,0,255), thickness=2)
-        plt.plot(x, y)
-        plt.show()
-        cv2.waitKey(0)
+        if (test == False):
+            draw_plan(img, plan, bgr=(0,0,255), thickness=2)
+            cv2.waitKey(0)
 
-        return [start_state]
-
-
+        # plt.plot(num_nodes_list, path_length_list, label='Optimal Path Length')
+        # plt.xlabel('Number of Nodes')
+        # plt.ylabel('Path Length')
+        # plt.title('Path Length vs Number of Nodes in RRT')
+        # plt.legend()
+        # plt.savefig('rrt_opt_length_vs_num_nodes.png')
+        # plt.show()
+        
+        # Calculaute optimal path cost
+        cost_of_optimal_path = 0
+        curr_node = dest_state
+        while curr_node.parent != None:
+            cost_of_optimal_path += curr_node.euclidean_distance(curr_node.parent)
+            curr_node = curr_node.parent
+        
+        if (test == False):
+            return (plan, cost_of_optimal_path, len(tree_nodes))
+        else:
+            return output, cost_of_optimal_path
+    
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: rrt_planner.py occupancy_grid.pkl")
-        sys.exit(1)
+        
+    world = cv2.imread('./worlds/simple_maze.png')
+    start_state = State(40, 40, None)
+    dest_state = State(1000, 650, None)
 
-    pkl_file = open(sys.argv[1], 'rb')
-    # world is a numpy array with dimensions (rows, cols, 3 color channels)
-    world = pickle.load(pkl_file)
-    pkl_file.close()
+    # world = cv2.imread('./worlds/complex_maze.png')
+    # start_state = State(40, 40, None)
+    # dest_state = State(1000, 650, None)
+        
+    # world = cv2.imread('./worlds/complex_maze_concave.png')
+    # start_state = State(160, 70, None)
+    # dest_state = State(1000, 650, None)
 
-    rrt = RRTStarPlanner(world)
+    # world = cv2.imread('./worlds/cluttered.png')
+    # start_state = State(40, 40, None)
+    # dest_state = State(1000, 650, None)
 
-    start_state = State(10, 10, None)
-    dest_state = State(10, 250, None)
+    # world = cv2.imread('./worlds/floor_plan.png')
+    # start_state = State(70, 860, None)
+    # dest_state = State(1260, 100, None)
+    # dest_state = State(1250, 850, None)
 
-    max_num_steps = 2000     # max number of nodes to be added to the tree
-    max_steering_radius = 30 # pixels
-    dest_reached_radius = 50 # pixels
-    plan = rrt.plan(start_state,
-                    dest_state,
-                    max_num_steps,
-                    max_steering_radius,
-                    dest_reached_radius)
+    # world = cv2.imread('./worlds/floor_plan_cleaned.png')
+    # start_state = State(80, 820, None)
+    # dest_state = State(1210, 90, None)
+    # dest_state = State(1070, 800, None)
 
+    # world = cv2.imread('./worlds/regular.png')
+    # start_state = State(30, 25, None)
+    # dest_state = State(925, 720, None)
+
+    # world = cv2.imread('./worlds/irregular.png')
+    # start_state = State(40, 35, None)
+    # dest_state = State(800, 645, None)
+
+    # world = cv2.imread('./worlds/narrow.png')
+    # start_state = State(35, 35, None)
+    # dest_state = State(1125, 900, None)
+
+    informed_rrt_star = InformedRRTPlanner(world)
+    
+    max_num_steps = 2500     # max number of iterations
+    max_steering_radius = 70  # pixels
+    dest_reached_radius = 50  # pixels
+    (plan, cost, num_nodes) = informed_rrt_star.plan(start_state,
+                                                    dest_state,
+                                                    max_num_steps,
+                                                    max_steering_radius,
+                                                    dest_reached_radius,
+                                                    test=False,
+                                                    filename="informed_rrt_result.png")

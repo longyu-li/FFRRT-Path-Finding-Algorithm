@@ -1,0 +1,3 @@
+Cost of simple_maze.png: 1389.93684783196
+Cost of complex_maze.png: 1654.1893217343231
+Cost of complex_maze_concave.png: 1800.5381087447577
