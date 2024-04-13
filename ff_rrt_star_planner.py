@@ -6,7 +6,7 @@ class FFRRTPlanner(RRTPlanner):
     Implementation of the FF-RRT* Planning algorithm.
     """
 
-    def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, dichotomy, test, filename):
+    def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, hybrid_lambda, dichotomy, test, filename):
         """
         Returns a path as a sequence of states [start_state, ..., dest_state]
         if dest_state is reachable from start_state. Otherwise returns [start_state].
@@ -23,9 +23,6 @@ class FFRRTPlanner(RRTPlanner):
         img = np.copy(self.world)
 
         plan = [start_state]
-
-        # hybrid_lambda = random.random()
-        hybrid_lambda = 0.7
 
         prev_sample = start_state
 
@@ -147,14 +144,18 @@ if __name__ == "__main__":
     # start_state = State(40, 35, None)
     # dest_state = State(800, 645, None)
 
-    world = cv2.imread('./worlds/narrow.png')
-    start_state = State(35, 35, None)
-    dest_state = State(1125, 900, None)
+    # world = cv2.imread('./worlds/narrow.png')
+    # start_state = State(35, 35, None)
+    # dest_state = State(1125, 900, None)
+
+    world = cv2.imread('./worlds/sauga_map_resized.png')
+    start_state = State(10, 47, None)
+    dest_state = State(1080, 1085, None)
 
     ff_rrt_star = FFRRTPlanner(world)
 
     max_num_steps = 100000     # max number of iterations
-    max_steering_radius = 70  # pixels
+    max_steering_radius = 20  # pixels
     dest_reached_radius = 50  # pixels
     dichotomy = 2
     (plan, cost, num_nodes) = ff_rrt_star.plan(start_state,

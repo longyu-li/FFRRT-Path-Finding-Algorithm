@@ -36,7 +36,8 @@ if __name__ == "__main__":
 
     environments = ["simple_maze.png", "complex_maze.png", "complex_maze_concave.png", 
                     "cluttered.png", "floor_plan_cleaned_1.png", "floor_plan_cleaned_2.png", 
-                    "regular.png", "irregular.png", "narrow.png"]
+                    "regular.png", "irregular.png", "narrow.png", "sauga_map.png"]
+
     
     with open('rrt_costs.txt', 'w') as file:
 
@@ -45,6 +46,14 @@ if __name__ == "__main__":
             print(e)
 
             world = cv2.imread("./worlds/" + e)
+
+            # Initialize mapping algorithms
+            informed_rrt_star = InformedRRTPlanner(world)
+
+            # Initialize other planning parameters
+            max_num_steps = 10000  # max number of nodes to be added to the tree
+            max_steering_radius = 70  # pixels
+            dest_reached_radius = 50  # pixels
 
             start_state = dest_state = None
 
@@ -83,17 +92,14 @@ if __name__ == "__main__":
             elif (e == "narrow.png"):
                 start_state = State(35, 35, None)
                 dest_state = State(1125, 900, None)
+            elif (e == "sauga_map.png"):
+                start_state = State(295, 425, None)
+                dest_state = State(4650, 4650, None)
+                max_num_steps = 20000
+                max_steering_radius = 150 
+                dest_reached_radius = 150 
             else:
                 print("Error finding environment!")
-
-
-            # Initialize mapping algorithms
-            informed_rrt_star = InformedRRTPlanner(world)
-
-            # Initialize other planning parameters
-            max_num_steps = 10000  # max number of nodes to be added to the tree
-            max_steering_radius = 70  # pixels
-            dest_reached_radius = 50  # pixels
 
             print("Starting search...")
 

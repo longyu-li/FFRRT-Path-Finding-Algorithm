@@ -26,13 +26,33 @@ if __name__ == "__main__":
 
     environments = ["simple_maze.png", "complex_maze.png", "complex_maze_concave.png", 
                     "cluttered.png", "floor_plan_cleaned_1.png", "floor_plan_cleaned_2.png", 
-                    "regular.png", "irregular.png", "narrow.png"]
+                    "regular.png", "irregular.png", "narrow.png", "sauga_map.png"]
+
     
     for e in environments:
 
         print(e)
 
         world = cv2.imread("./worlds/" + e)
+
+        # Initialize mapping algorithms
+        fast_rrt_star = FastRRTPlanner(world)
+        f_rrt_star = FRRTPlanner(world)
+        ff_rrt_star = FFRRTPlanner(world)
+
+        # Initialize other planning parameters
+        max_num_steps = 30000  # max number of nodes to be added to the tree
+        max_steering_radius = 70  # pixels
+        dest_reached_radius = 50  # pixels
+        dichotomy = 2
+        hybrid_lambda_fast = 0.5
+        hybrid_lambda_ff = 0.5
+
+        # instantiate the arrays to store algorithm cost, iterations,
+        # and computation time for each algorithm
+        algos_c = [[], [], []]
+        algos_n = [[], [], []]
+        algos_t = [[], [], []]
 
         start_state = dest_state = None
 
@@ -47,6 +67,7 @@ if __name__ == "__main__":
         elif (e == "complex_maze_concave.png"):
             start_state = State(160, 70, None)
             dest_state = State(1000, 650, None)
+            hybrid_lambda_fast = 0.2
 
         elif (e == "cluttered.png"):
             start_state = State(40, 40, None)
@@ -72,36 +93,28 @@ if __name__ == "__main__":
             start_state = State(35, 35, None)
             dest_state = State(1125, 900, None)
 
+        elif (e == "sauga_map.png"):
+            start_state = State(295, 425, None)
+            dest_state = State(4650, 4650, None)
+            max_steering_radius = 150 
+            dest_reached_radius = 150
+            dichotomy = 150
 
-        # Initialize mapping algorithms
-        fast_rrt_star = FastRRTPlanner(world)
-        f_rrt_star = FRRTPlanner(world)
-        ff_rrt_star = FFRRTPlanner(world)
 
-        # Initialize other planning parameters
-        max_num_steps = 30000  # max number of nodes to be added to the tree
-        max_steering_radius = 70  # pixels
-        dest_reached_radius = 50  # pixels
-        dichotomy = 2
-
-        # instantiate the arrays to store algorithm cost, iterations,
-        # and computation time for each algorithm
-        algos_c = [[], [], []]
-        algos_n = [[], [], []]
-        algos_t = [[], [], []]
-
-        # runs 30 simulations:
-        for sim_num in range(1, 31):
+        # runs 15 simulations:
+        for sim_num in range(1, 16):
 
             print(sim_num)
+
+            filename = str(sim_num) + "_" + e
 
             start_time = time.perf_counter()
             fast_path, fast_cost, fast_nodes = fast_rrt_star.plan(start_state,
                                                                     dest_state,
                                                                     max_num_steps,
                                                                     max_steering_radius,
-                                                                    dest_reached_radius,
-                                                                    test=True, filename=None)
+                                                                    hybrid_lambda_fast,
+                                                                    test=True, filename="fast_" + filename)
             end_time = time.perf_counter()
             execution_time = end_time - start_time
             if fast_path != None:
@@ -113,7 +126,7 @@ if __name__ == "__main__":
                                                                 max_num_steps,
                                                                 max_steering_radius,
                                                                 dichotomy,
-                                                                test=True, filename=None)
+                                                                test=True, filename="f_" + filename)
             end_time = time.perf_counter()
             execution_time = end_time - start_time
             if frrt_path != None:
@@ -124,8 +137,9 @@ if __name__ == "__main__":
                                                                     dest_state,
                                                                     max_num_steps,
                                                                     max_steering_radius,
+                                                                    hybrid_lambda_ff,
                                                                     dichotomy,
-                                                                    test=True, filename=None)
+                                                                    test=True, filename="ff_" + filename)
             end_time = time.perf_counter()
             execution_time = end_time - start_time
             if ffrrt_path != None:

@@ -6,7 +6,7 @@ class FastRRTPlanner(RRTPlanner):
     Implementation of the Fast RRT* Planning algorithm.
     """
 
-    def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, dest_reached_radius, test, filename):
+    def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, hybrid_lambda, test, filename):
         """
         Returns a path as a sequence of states [start_state, ..., dest_state]
         if dest_state is reachable from start_state. Otherwise returns [start_state].
@@ -24,8 +24,6 @@ class FastRRTPlanner(RRTPlanner):
 
         plan = [start_state]
 
-        # hybrid_lambda = random.random()
-        hybrid_lambda = 0.2
         prev_sample = start_state
 
         for step in range(max_num_steps):
@@ -88,9 +86,9 @@ class FastRRTPlanner(RRTPlanner):
 
 if __name__ == "__main__":
         
-    world = cv2.imread('./worlds/simple_maze.png')
-    start_state = State(40, 40, None)
-    dest_state = State(1000, 650, None)
+    # world = cv2.imread('./worlds/simple_maze.png')
+    # start_state = State(40, 40, None)
+    # dest_state = State(1000, 650, None)
 
     # world = cv2.imread('./worlds/complex_maze.png')
     # start_state = State(40, 40, None)
@@ -126,11 +124,21 @@ if __name__ == "__main__":
     # start_state = State(35, 35, None)
     # dest_state = State(1125, 900, None)
 
+    world = cv2.imread('./worlds/sauga_map.png')
+    start_state = State(0, 0, None)
+    dest_state = State(4650, 4650, None)
+
+    # world = cv2.imread('./worlds/sauga_map_resized.png')
+    # start_state = State(10, 47, None)
+    # dest_state = State(1080, 1085, None)
+    # max_steering_radius = 20 # pixels
+    # dest_reached_radius = 50 # pixels
+
     rrt = FastRRTPlanner(world)
 
     max_num_steps = 100000     # max number of iterations
-    max_steering_radius = 70 # pixels
-    dest_reached_radius = 50 # pixels
+    max_steering_radius = 150 # pixels
+    dest_reached_radius = 150 # pixels
     (plan, cost, num_nodes) = rrt.plan(start_state,
                                 dest_state,
                                 max_num_steps,

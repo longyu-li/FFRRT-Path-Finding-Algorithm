@@ -337,18 +337,20 @@ class RRTPlanner:
     
     # Abstract Method
     def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, dest_reached_radius, test=False, filename=None):
-        """
-        Returns a path as a sequence of states [start_state, ..., dest_state]
-        if dest_state is reachable from start_state. Otherwise returns [start_state].
-        Assume both source and destination are in free space.
-        """
+
+        pass
+    
+    # Abstract Method (different paramaters)
+    def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, hybrid_lambda, test=False, filename=None):
+
         pass
 
     # Abstract Method (different paramaters)
     def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, dichotomy, test=False, filename=None):
-        """
-        Returns a path as a sequence of states [start_state, ..., dest_state]
-        if dest_state is reachable from start_state. Otherwise returns [start_state].
-        Assume both source and destination are in free space.
-        """
+
+        pass
+    
+    # Abstract Method (different paramaters)
+    def plan(self, start_state, dest_state, max_num_steps, max_steering_radius, hybrid_lambda, dichotomy, test=False, filename=None):
+
         pass

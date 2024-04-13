@@ -146,6 +146,16 @@ if __name__ == "__main__":
     # start_state = State(35, 35, None)
     # dest_state = State(1125, 900, None)
 
+    # world = cv2.imread('./worlds/sauga_map.png')
+    # start_state = State(0, 0, None)
+    # dest_state = State(4650, 4650, None)
+
+    # world = cv2.imread('./worlds/sauga_map_resized.png')
+    # start_state = State(10, 47, None)
+    # dest_state = State(1080, 1085, None)
+    # max_steering_radius = 20  # pixels
+    # dest_reached_radius = 50  # pixels
+
     f_rrt_star = FRRTPlanner(world)
 
     max_num_steps = 100000     # max number of iterations
