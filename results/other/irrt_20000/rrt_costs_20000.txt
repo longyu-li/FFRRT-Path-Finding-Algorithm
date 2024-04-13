@@ -1,6 +1,0 @@
-Cost of simple_maze.png: 1392.5397064772426
-Cost of complex_maze.png: 1660.1847751156486
-Cost of complex_maze_concave.png: 1831.8144261104921
-Cost of cluttered.png: 1168.1846637325582
-Cost of floor_plan_cleaned_1.png: 1384.8538947995792
-Cost of floor_plan_cleaned_2.png: 1276.8912908039115
